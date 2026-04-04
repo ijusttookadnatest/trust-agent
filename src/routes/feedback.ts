@@ -45,12 +45,14 @@ feedbackRouter.post('/', async (req: Request, res: Response) => {
   }
 
   // Record feedback on-chain
+  console.log(`[feedback] giveFeedback agentId=${agentId} value=${value} tag=${tag1}`)
   let txHash: string
   try {
     const registry = getReputationRegistry()
     const tx = await registry.giveFeedback(agentId, value, 0, tag1)
     const receipt = await tx.wait()
     txHash = receipt!.hash
+    console.log(`[feedback] giveFeedback tx=${txHash}`)
   } catch (err: any) {
     res.status(500).json({ error: `giveFeedback failed: ${err.message}` })
     return
@@ -59,8 +61,9 @@ feedbackRouter.post('/', async (req: Request, res: Response) => {
   // Recompute score + update ENS
   let scoreResult
   try {
-    scoreResult = await computeScore(agentId)
+    scoreResult = await computeScore(agentId, agentRow.walletAddress)
     if (agentRow.ensName) {
+      console.log(`[feedback] updating ENS ${agentRow.ensName} score=${scoreResult.score}`)
       await setTrustRecords(agentRow.ensName, {
         score: scoreResult.score,
         walletAddress: agentRow.walletAddress,

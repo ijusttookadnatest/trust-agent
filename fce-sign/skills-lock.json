@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "create-extension": {
+      "source": "/home/alvinouille/Documents/HACKATHONS/reput-agent/fce-sign",
+      "sourceType": "local",
+      "computedHash": "1299b53b4420a9a0662c5ecbaa68a36e95719ecee9c464f97d3725f2ae11362b"
+    }
+  }
+}
