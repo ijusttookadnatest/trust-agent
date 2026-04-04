@@ -1,0 +1,14 @@
+# Dependencies (managed by forge install / git submodules)
+lib/
+
+# Foundry build artifacts
+out/
+cache/
+
+# Deployment dry-runs (keep actual broadcast runs for address tracking)
+broadcast/*/dry-run/
+
+# Environment
+.env
+.env.*
+!.env.example
