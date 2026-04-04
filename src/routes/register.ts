@@ -26,9 +26,7 @@ registerRouter.post('/', async (req: Request, res: Response) => {
         const ensName = await registerEnsSubname(existing, agentWalletAddress)
         await setTrustRecords(ensName, {
           score: 0,
-          agentId: existing,
-          registryAddress: process.env.REPUTATION_REGISTRY_ADDRESS!,
-          agentWalletAddress,
+          walletAddress: agentWalletAddress,
         })
         agentsDb.updateEnsName(agentWalletAddress, ensName)
         res.status(200).json({ agentId: existing, ensName, chain, registeredAt: row?.registeredAt, alreadyRegistered: true })
@@ -72,9 +70,7 @@ registerRouter.post('/', async (req: Request, res: Response) => {
     ensName = await registerEnsSubname(agentId, agentWalletAddress)
     await setTrustRecords(ensName, {
       score: 0,
-      agentId,
-      registryAddress: process.env.REPUTATION_REGISTRY_ADDRESS!,
-      agentWalletAddress,
+      walletAddress: agentWalletAddress,
     })
   } catch (ensErr: any) {
     ensWarning = `ENS failed: ${ensErr.message} — call /register again to retry`

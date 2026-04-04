@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@0glabs/0g-serving-broker": "^0.7.4",
+    "@chainlink/cre-sdk": "^1.5.0",
     "@ensdomains/ensjs": "^4.2.2",
     "@hono/node-server": "^1.19.12",
     "@worldcoin/agentkit": "^0.1.6",
