@@ -1,4 +1,4 @@
-# reput-agent
+# TrustAgent
 
 A reputation API for agent-to-agent commerce. Call it before any interaction to verify whether an agent can be trusted.
 
