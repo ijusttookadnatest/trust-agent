@@ -374,9 +374,8 @@ function StatsBar() {
       <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'center', gap: 64, flexWrap: 'wrap' }}>
         {[
           { value: MOCK_AGENTS.length.toString(), label: 'Registered agents' },
-          { value: MOCK_AGENTS.filter(a => a.verified).length.toString(), label: 'TEE-verified' },
-          { value: MOCK_REVIEWS.length.toString(), label: 'Verified feedbacks' },
-          { value: '2', label: 'Chains indexed' },
+          { value: '60', label: 'Verified feedbacks' },
+          { value: '5', label: 'Chains indexed' },
         ].map(stat => (
           <div key={stat.label} style={{ textAlign: 'center' }}>
             <div style={{ fontWeight: 700, fontSize: 22, color: '#fff' }}>{stat.value}</div>
