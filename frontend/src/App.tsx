@@ -155,7 +155,7 @@ function AgentAvatar({ agentId, size = 72 }: { agentId: number; size?: number })
 
 // ── Agent card ────────────────────────────────────────────────────────────────
 
-function AgentCard({ agent }: { agent: Agent }) {
+function AgentCard({ agent, onClick }: { agent: Agent; onClick?: () => void }) {
   const company = COMPANY_LOGOS[agent.agentId % COMPANY_LOGOS.length]
 
   return (
@@ -164,6 +164,7 @@ function AgentCard({ agent }: { agent: Agent }) {
       overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.15s',
       display: 'flex', flexDirection: 'column',
     }}
+      onClick={onClick}
       onMouseEnter={e => { e.currentTarget.style.borderColor = '#3a3a3a' }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = '#1f1f1f' }}
     >
@@ -225,7 +226,7 @@ function AgentCard({ agent }: { agent: Agent }) {
 
 // ── Best agents section ───────────────────────────────────────────────────────
 
-function BestAgentsSection({ category }: { category: string }) {
+function BestAgentsSection({ category, onSelectAgent }: { category: string; onSelectAgent: (id: number) => void }) {
   const catEmoji = CATEGORIES.find(c => c.name === category)?.emoji ?? ''
   const agents = [...MOCK_AGENTS]
     .filter(a => a.category === category)
@@ -252,7 +253,7 @@ function BestAgentsSection({ category }: { category: string }) {
         </button>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        {agents.map(a => <AgentCard key={a.agentId} agent={a} />)}
+        {agents.map(a => <AgentCard key={a.agentId} agent={a} onClick={() => onSelectAgent(a.agentId)} />)}
       </div>
     </section>
   )
@@ -331,7 +332,7 @@ function StatsBar() {
 
 // ── Homepage ──────────────────────────────────────────────────────────────────
 
-function Homepage() {
+function Homepage({ onSelectAgent }: { onSelectAgent: (id: number) => void }) {
   const [search, setSearch] = useState('')
   const [results, setResults] = useState<Agent[]>([])
   const [searched, setSearched] = useState(false)
@@ -341,7 +342,7 @@ function Homepage() {
     const q = search.trim().toLowerCase()
     setSearched(true)
     setResults(MOCK_AGENTS.filter(a =>
-      a.ensName.includes(q) || a.walletAddress.toLowerCase().includes(q) ||
+      agentEns(a.agentId).includes(q) || a.walletAddress.toLowerCase().includes(q) ||
       a.category.toLowerCase().includes(q) || String(a.agentId) === q
     ))
   }
@@ -400,14 +401,19 @@ function Homepage() {
                   </div>
                 : <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {results.map(a => (
-                    <div key={a.agentId} style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '10px 14px', background: '#0d0d0d', borderRadius: 8,
-                      border: '1px solid #1f1f1f',
-                    }}>
+                    <div key={a.agentId}
+                      onClick={() => onSelectAgent(a.agentId)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '10px 14px', background: '#0d0d0d', borderRadius: 8,
+                        border: '1px solid #1f1f1f', cursor: 'pointer', transition: 'border-color 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#3a3a3a' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#1f1f1f' }}
+                    >
                       <AgentAvatar agentId={a.agentId} size={36} />
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: '#fff' }}>{agentEns(a.agentId)}</div>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: '#fff', fontFamily: 'monospace' }}>{agentEns(a.agentId)}</div>
                         <div style={{ fontSize: 11, color: '#a3a3a3' }}>{a.category} · ({a.interactionCount} txs)</div>
                       </div>
                       <ScoreStars score={a.score} size={16} />
@@ -453,7 +459,7 @@ function Homepage() {
       {/* Best agents */}
       <div style={{ paddingTop: 48 }}>
         {FEATURED_CATEGORIES.map(cat => (
-          <BestAgentsSection key={cat} category={cat} />
+          <BestAgentsSection key={cat} category={cat} onSelectAgent={onSelectAgent} />
         ))}
       </div>
 
@@ -611,8 +617,8 @@ function Register({ onRegistered }: { onRegistered: (agent: Agent) => void }) {
 
 // ── Rate tab ──────────────────────────────────────────────────────────────────
 
-function RateAgent({ agents, onFeedback }: { agents: Agent[]; onFeedback: (agentId: number, score: number) => void }) {
-  const [agentId, setAgentId] = useState('')
+function RateAgent({ agents, initialAgentId, onFeedback }: { agents: Agent[]; initialAgentId?: number; onFeedback: (agentId: number, score: number) => void }) {
+  const [agentId, setAgentId] = useState(initialAgentId ? String(initialAgentId) : '')
   const [value, setValue] = useState(80)
   const [tag, setTag] = useState('successRate')
   const [proof, setProof] = useState('')
@@ -822,20 +828,254 @@ function AgentProviderDropdown({ onRegister }: { onRegister: () => void }) {
   )
 }
 
+// ── Agent profile ─────────────────────────────────────────────────────────────
+
+function AgentProfile({ agentId, onBack, onRate }: { agentId: number; onBack: () => void; onRate: (id: number) => void }) {
+  const agent = MOCK_AGENTS.find(a => a.agentId === agentId)
+  if (!agent) return (
+    <div style={{ padding: '80px 24px', textAlign: 'center', color: '#a3a3a3' }}>
+      Agent not found. <button onClick={onBack} style={{ color: '#00b67a', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>← Back</button>
+    </div>
+  )
+
+  const company = COMPANY_LOGOS[agent.agentId % COMPANY_LOGOS.length]
+  const reviews = MOCK_REVIEWS.filter(r => r.agentId === agent.agentId)
+  const allReviews = reviews.length > 0 ? reviews : MOCK_REVIEWS.slice(0, 3)
+
+  // Score distribution for the breakdown bars
+  const dist: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+  allReviews.forEach(r => {
+    const stars = Math.round((r.value / 100) * 5)
+    dist[stars] = (dist[stars] || 0) + 1
+  })
+  const maxDist = Math.max(...Object.values(dist), 1)
+
+  const shortSig = agent.teeSignature.slice(0, 10) + '…' + agent.teeSignature.slice(-6)
+
+  return (
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
+      {/* Back */}
+      <button onClick={onBack} style={{
+        background: 'none', border: 'none', color: '#a3a3a3', cursor: 'pointer',
+        fontSize: 13, marginBottom: 28, display: 'flex', alignItems: 'center', gap: 6,
+        padding: 0, transition: 'color 0.15s',
+      }}
+        onMouseEnter={e => { e.currentTarget.style.color = '#fff' }}
+        onMouseLeave={e => { e.currentTarget.style.color = '#a3a3a3' }}
+      >
+        ← Back to explore
+      </button>
+
+      {/* Header card */}
+      <div style={{
+        border: '1px solid #1f1f1f', borderRadius: 12, padding: '28px 32px',
+        background: '#0d0d0d', marginBottom: 24,
+        display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap',
+      }}>
+        {/* Company logo */}
+        <div style={{
+          width: 64, height: 64, borderRadius: 14, background: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0, overflow: 'hidden',
+        }}>
+          <img
+            src={`https://cdn.simpleicons.org/${company.slug}`}
+            alt={company.name}
+            style={{ width: 42, height: 42, objectFit: 'contain' }}
+            onError={e => {
+              e.currentTarget.style.display = 'none'
+              e.currentTarget.parentElement!.innerHTML = `<span style="font-size:14px;font-weight:700;color:#000">${company.name.slice(0, 2).toUpperCase()}</span>`
+            }}
+          />
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff', margin: 0, fontFamily: 'monospace', letterSpacing: -0.5 }}>
+              {agentEns(agent.agentId)}
+            </h1>
+            <span style={{ fontSize: 11, color: '#00b67a', fontWeight: 700, background: '#001a0f', border: '1px solid #00b67a33', borderRadius: 4, padding: '2px 8px' }}>
+              ✓ TEE Verified
+            </span>
+          </div>
+          <div style={{ fontSize: 13, color: '#a3a3a3', marginBottom: 12 }}>
+            via {company.name} · {agent.category}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <ScoreStars score={agent.score} size={22} />
+            <span style={{ fontSize: 26, fontWeight: 800, color: scoreColor(agent.score) }}>{agent.score}</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: scoreColor(agent.score) }}>{scoreLabel(agent.score)}</span>
+            <span style={{ fontSize: 13, color: '#a3a3a3' }}>({agent.interactionCount.toLocaleString()} txs)</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+          <button
+            onClick={() => onRate(agent.agentId)}
+            style={{
+              padding: '10px 20px', background: '#fff', color: '#000', border: 'none',
+              borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: 'pointer',
+              transition: 'background 0.15s', whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#e5e5e5' }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#fff' }}
+          >
+            Rate this agent
+          </button>
+          <div style={{ fontSize: 11, color: '#525252', fontFamily: 'monospace' }}>
+            {agent.walletAddress.slice(0, 10)}…{agent.walletAddress.slice(-6)}
+          </div>
+        </div>
+      </div>
+
+      {/* Body: score widget + reviews */}
+      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 24, alignItems: 'start' }}>
+
+        {/* Left: score breakdown */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Score widget */}
+          <div style={{ border: '1px solid #1f1f1f', borderRadius: 10, padding: '20px', background: '#0d0d0d' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#a3a3a3', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>Trust Score</div>
+
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 56, fontWeight: 800, color: scoreColor(agent.score), lineHeight: 1 }}>{agent.score}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: scoreColor(agent.score), marginTop: 4 }}>{scoreLabel(agent.score)}</div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+                <ScoreStars score={agent.score} size={20} />
+              </div>
+            </div>
+
+            {/* Star distribution */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 16 }}>
+              {[5, 4, 3, 2, 1].map(star => (
+                <div key={star} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11, color: '#a3a3a3', minWidth: 10, textAlign: 'right' }}>{star}</span>
+                  <div style={{ flex: 1, height: 6, background: '#1f1f1f', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', borderRadius: 3,
+                      background: scoreColor(agent.score),
+                      width: `${Math.round((dist[star] / maxDist) * 100)}%`,
+                      transition: 'width 0.3s',
+                    }} />
+                  </div>
+                  <span style={{ fontSize: 11, color: '#525252', minWidth: 14, textAlign: 'right' }}>{dist[star]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Reliability / Seniority */}
+          <div style={{ border: '1px solid #1f1f1f', borderRadius: 10, padding: '20px', background: '#0d0d0d' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#a3a3a3', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>Breakdown</div>
+            {[
+              { label: 'Reliability', value: agent.reliability, desc: 'ERC-8004 on-chain' },
+              { label: 'Seniority', value: agent.seniority, desc: 'Interaction history' },
+            ].map(item => (
+              <div key={item.label} style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <span style={{ fontSize: 12, color: '#fff', fontWeight: 500 }}>{item.label}</span>
+                  <span style={{ fontSize: 12, color: scoreColor(item.value), fontWeight: 700 }}>{item.value}</span>
+                </div>
+                <div style={{ height: 6, background: '#1f1f1f', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: scoreColor(item.value), borderRadius: 3, width: `${item.value}%` }} />
+                </div>
+                <div style={{ fontSize: 10, color: '#525252', marginTop: 3 }}>{item.desc}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* TEE info */}
+          <div style={{ border: '1px solid #1f1f1f', borderRadius: 10, padding: '20px', background: '#0d0d0d' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#a3a3a3', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>TEE Signature</div>
+            <div style={{ fontSize: 11, fontFamily: 'monospace', color: '#00b67a', wordBreak: 'break-all', marginBottom: 8 }}>
+              {shortSig}
+            </div>
+            <div style={{ fontSize: 10, color: '#525252', lineHeight: 1.6 }}>
+              Score signed by Flare TEE (ECDSA secp256k1). Verifiable via <span style={{ color: '#a3a3a3' }}>ecrecover</span> — no API needed.
+            </div>
+            <div style={{ marginTop: 10, fontSize: 10, fontFamily: 'monospace', color: '#525252' }}>
+              ENS: {agentEns(agent.agentId)}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: reviews */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: '#fff', margin: 0 }}>Feedback</h2>
+            <span style={{ fontSize: 12, color: '#a3a3a3' }}>{allReviews.length} verified interactions</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {allReviews.map((r, i) => (
+              <div key={i} style={{
+                border: '1px solid #1f1f1f', borderRadius: 10, padding: '18px 20px',
+                background: '#0d0d0d',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%', background: '#1f1f1f',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 12, color: '#fff', fontWeight: 700, flexShrink: 0,
+                      border: '1px solid #2a2a2a',
+                    }}>
+                      {r.authorName[0]}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: '#fff', fontFamily: 'monospace' }}>{r.authorName}</div>
+                      <div style={{ fontSize: 11, color: '#a3a3a3' }}>{r.date}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <ScoreStars score={r.value} size={14} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: scoreColor(r.value) }}>{r.value}</span>
+                  </div>
+                </div>
+
+                <p style={{ fontSize: 13, color: '#a3a3a3', lineHeight: 1.7, margin: 0 }}>{r.comment}</p>
+
+                <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 40,
+                    background: '#141414', border: '1px solid #2a2a2a', color: '#a3a3a3',
+                  }}>
+                    {r.tag}
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 40,
+                    background: '#001a0f', border: '1px solid #00b67a33', color: '#00b67a',
+                  }}>
+                    ✓ on-chain
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Root ──────────────────────────────────────────────────────────────────────
 
-type Tab = 'home' | 'register' | 'rate'
+type Page = { view: 'home' } | { view: 'register' } | { view: 'rate'; agentId?: number } | { view: 'profile'; agentId: number }
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('home')
+  const [page, setPage] = useState<Page>({ view: 'home' })
   const [agents, setAgents] = useState<Agent[]>(MOCK_AGENTS)
+
+  function goProfile(id: number) { setPage({ view: 'profile', agentId: id }) }
+  function goRate(id?: number) { setPage({ view: 'rate', agentId: id }) }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <header style={{ borderBottom: '1px solid #1a1a1a', background: '#000', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', height: 54, gap: 28 }}>
-          <button onClick={() => setTab('home')} style={{
+          <button onClick={() => setPage({ view: 'home' })} style={{
             background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0,
           }}>
             <TrustAgentLogo size={32} />
@@ -843,14 +1083,14 @@ export default function App() {
 
           <nav style={{ display: 'flex', gap: 2, flex: 1 }}>
             {([
-              { id: 'home' as Tab, label: 'Explore' },
-              { id: 'rate' as Tab, label: 'Rate an Agent' },
-            ]).map(item => (
-              <button key={item.id} onClick={() => setTab(item.id)} style={{
+              { id: 'home', label: 'Explore' },
+              { id: 'rate', label: 'Rate an Agent' },
+            ] as const).map(item => (
+              <button key={item.id} onClick={() => setPage({ view: item.id })} style={{
                 padding: '6px 14px', borderRadius: 6, border: 'none', fontSize: 13,
                 fontWeight: 500, cursor: 'pointer', transition: 'background 0.1s, color 0.1s',
-                background: tab === item.id ? '#141414' : 'transparent',
-                color: tab === item.id ? '#fff' : '#a3a3a3',
+                background: page.view === item.id ? '#141414' : 'transparent',
+                color: page.view === item.id ? '#fff' : '#a3a3a3',
               }}>
                 {item.label}
               </button>
@@ -862,15 +1102,28 @@ export default function App() {
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00b67a', display: 'inline-block' }} />
               Flare TEE
             </div>
-            <AgentProviderDropdown onRegister={() => setTab('register')} />
+            <AgentProviderDropdown onRegister={() => setPage({ view: 'register' })} />
           </div>
         </div>
       </header>
 
       <main style={{ flex: 1 }}>
-        {tab === 'home' && <Homepage />}
-        {tab === 'register' && <Register onRegistered={a => setAgents(prev => [...prev, a])} />}
-        {tab === 'rate' && <RateAgent agents={agents} onFeedback={(id, score) => setAgents(prev => prev.map(a => a.agentId === id ? { ...a, score } : a))} />}
+        {page.view === 'home' && <Homepage onSelectAgent={goProfile} />}
+        {page.view === 'register' && <Register onRegistered={a => setAgents(prev => [...prev, a])} />}
+        {page.view === 'rate' && (
+          <RateAgent
+            agents={agents}
+            initialAgentId={page.agentId}
+            onFeedback={(id, score) => setAgents(prev => prev.map(a => a.agentId === id ? { ...a, score } : a))}
+          />
+        )}
+        {page.view === 'profile' && (
+          <AgentProfile
+            agentId={page.agentId}
+            onBack={() => setPage({ view: 'home' })}
+            onRate={(id) => goRate(id)}
+          />
+        )}
       </main>
 
       <footer style={{ borderTop: '1px solid #1a1a1a', color: '#a3a3a3', padding: '24px 24px' }}>
