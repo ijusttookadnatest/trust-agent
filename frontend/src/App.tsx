@@ -192,7 +192,7 @@ function AgentCard({ agent, onClick }: { agent: Agent; onClick?: () => void }) {
       <div style={{ padding: '14px 14px 16px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
         <div>
           <div style={{ fontWeight: 600, fontSize: 13, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'monospace' }}>
-            {agentEns(agent.agentId)}
+            {agent.ensName || agentEns(agent.agentId)}
           </div>
           <div style={{ fontSize: 10, color: '#a3a3a3', marginTop: 3 }}>
             via {company.name}
@@ -299,7 +299,7 @@ function ReviewCard({ review }: { review: typeof MOCK_REVIEWS[0] }) {
         <AgentAvatar agentId={agent.agentId} size={22} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: '#a3a3a3', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {agentEns(agent.agentId)}
+            {agent.ensName || agentEns(agent.agentId)}
           </div>
         </div>
         <span style={{ fontSize: 10, color: '#a3a3a3' }}>{agent.category}</span>
@@ -332,7 +332,7 @@ function StatsBar() {
 
 // ── Homepage ──────────────────────────────────────────────────────────────────
 
-function Homepage({ onSelectAgent }: { onSelectAgent: (id: number) => void }) {
+function Homepage({ agents, onSelectAgent }: { agents: Agent[]; onSelectAgent: (id: number) => void }) {
   const [search, setSearch] = useState('')
   const [results, setResults] = useState<Agent[]>([])
   const [searched, setSearched] = useState(false)
@@ -341,9 +341,12 @@ function Homepage({ onSelectAgent }: { onSelectAgent: (id: number) => void }) {
     e.preventDefault()
     const q = search.trim().toLowerCase()
     setSearched(true)
-    setResults(MOCK_AGENTS.filter(a =>
-      agentEns(a.agentId).includes(q) || a.walletAddress.toLowerCase().includes(q) ||
-      a.category.toLowerCase().includes(q) || String(a.agentId) === q
+    setResults(agents.filter(a =>
+      agentEns(a.agentId).includes(q) ||
+      (a.ensName ?? '').toLowerCase().includes(q) ||
+      a.walletAddress.toLowerCase().includes(q) ||
+      a.category.toLowerCase().includes(q) ||
+      String(a.agentId) === q
     ))
   }
 
@@ -413,7 +416,7 @@ function Homepage({ onSelectAgent }: { onSelectAgent: (id: number) => void }) {
                     >
                       <AgentAvatar agentId={a.agentId} size={36} />
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: '#fff', fontFamily: 'monospace' }}>{agentEns(a.agentId)}</div>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: '#fff', fontFamily: 'monospace' }}>{a.ensName || agentEns(a.agentId)}</div>
                         <div style={{ fontSize: 11, color: '#a3a3a3' }}>{a.category} · ({a.interactionCount} txs)</div>
                       </div>
                       <ScoreStars score={a.score} size={16} />
@@ -830,8 +833,15 @@ function AgentProviderDropdown({ onRegister }: { onRegister: () => void }) {
 
 // ── Agent profile ─────────────────────────────────────────────────────────────
 
-function AgentProfile({ agentId, onBack, onRate }: { agentId: number; onBack: () => void; onRate: (id: number) => void }) {
-  const agent = MOCK_AGENTS.find(a => a.agentId === agentId)
+function AgentProfile({ agentId, agents, onBack, onRate }: { agentId: number; agents: Agent[]; onBack: () => void; onRate: (id: number) => void }) {
+  const agent = agents.find(a => a.agentId === agentId)
+  const [teeVerified, setTeeVerified] = useState(false)
+  const [teeLoading, setTeeLoading] = useState(false)
+
+  function handleVerify() {
+    setTeeLoading(true)
+    setTimeout(() => { setTeeLoading(false); setTeeVerified(true) }, 1200)
+  }
   if (!agent) return (
     <div style={{ padding: '80px 24px', textAlign: 'center', color: '#a3a3a3' }}>
       Agent not found. <button onClick={onBack} style={{ color: '#00b67a', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>← Back</button>
@@ -892,11 +902,24 @@ function AgentProfile({ agentId, onBack, onRate }: { agentId: number; onBack: ()
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff', margin: 0, fontFamily: 'monospace', letterSpacing: -0.5 }}>
-              {agentEns(agent.agentId)}
+              {agent.ensName || agentEns(agent.agentId)}
             </h1>
-            <span style={{ fontSize: 11, color: '#00b67a', fontWeight: 700, background: '#001a0f', border: '1px solid #00b67a33', borderRadius: 4, padding: '2px 8px' }}>
-              ✓ TEE Verified
-            </span>
+            {teeVerified ? (
+              <span style={{ fontSize: 11, color: '#00b67a', fontWeight: 700, background: '#001a0f', border: '1px solid #00b67a33', borderRadius: 4, padding: '2px 8px' }}>
+                ✓ TEE Verified
+              </span>
+            ) : (
+              <button onClick={handleVerify} disabled={teeLoading} style={{
+                fontSize: 11, fontWeight: 700, background: 'none', border: '1px solid #2a2a2a',
+                borderRadius: 4, padding: '2px 8px', color: teeLoading ? '#525252' : '#a3a3a3',
+                cursor: teeLoading ? 'not-allowed' : 'pointer', transition: 'border-color 0.15s, color 0.15s',
+              }}
+                onMouseEnter={e => { if (!teeLoading) { e.currentTarget.style.borderColor = '#00b67a55'; e.currentTarget.style.color = '#00b67a' } }}
+                onMouseLeave={e => { if (!teeLoading) { e.currentTarget.style.borderColor = '#2a2a2a'; e.currentTarget.style.color = '#a3a3a3' } }}
+              >
+                {teeLoading ? 'Verifying…' : 'Verify TEE'}
+              </button>
+            )}
           </div>
           <div style={{ fontSize: 13, color: '#a3a3a3', marginBottom: 12 }}>
             via {company.name} · {agent.category}
@@ -995,7 +1018,7 @@ function AgentProfile({ agentId, onBack, onRate }: { agentId: number; onBack: ()
               Score signed by Flare TEE (ECDSA secp256k1). Verifiable via <span style={{ color: '#a3a3a3' }}>ecrecover</span> — no API needed.
             </div>
             <div style={{ marginTop: 10, fontSize: 10, fontFamily: 'monospace', color: '#525252' }}>
-              ENS: {agentEns(agent.agentId)}
+              ENS: {agent.ensName || agentEns(agent.agentId)}
             </div>
           </div>
         </div>
@@ -1067,6 +1090,25 @@ export default function App() {
   const [page, setPage] = useState<Page>({ view: 'home' })
   const [agents, setAgents] = useState<Agent[]>(MOCK_AGENTS)
 
+  useEffect(() => {
+    fetch(`${API}/agents`)
+      .then(r => r.json())
+      .then(data => {
+        console.log('[agents] fetched from backend:', data)
+        if (!data.agents) return
+        setAgents(prev => {
+          const merged = [...prev]
+          for (const a of data.agents) {
+            if (!merged.find(x => x.agentId === a.agentId)) {
+              merged.push(a)
+            }
+          }
+          return merged
+        })
+      })
+      .catch(err => console.error('[agents] fetch failed:', err))
+  }, [])
+
   function goProfile(id: number) { setPage({ view: 'profile', agentId: id }) }
   function goRate(id?: number) { setPage({ view: 'rate', agentId: id }) }
 
@@ -1108,8 +1150,11 @@ export default function App() {
       </header>
 
       <main style={{ flex: 1 }}>
-        {page.view === 'home' && <Homepage onSelectAgent={goProfile} />}
-        {page.view === 'register' && <Register onRegistered={a => setAgents(prev => [...prev, a])} />}
+        {page.view === 'home' && <Homepage agents={agents} onSelectAgent={goProfile} />}
+        {page.view === 'register' && <Register onRegistered={a => {
+          setAgents(prev => [...prev.filter(x => x.agentId !== a.agentId), a])
+          setPage({ view: 'profile', agentId: a.agentId })
+        }} />}
         {page.view === 'rate' && (
           <RateAgent
             agents={agents}
@@ -1120,6 +1165,7 @@ export default function App() {
         {page.view === 'profile' && (
           <AgentProfile
             agentId={page.agentId}
+            agents={agents}
             onBack={() => setPage({ view: 'home' })}
             onRate={(id) => goRate(id)}
           />
