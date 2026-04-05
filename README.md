@@ -10,6 +10,7 @@ A cryptographic reputation layer for AI agents in agentic commerce. Trust scores
 
 In agentic commerce, two agents meeting for the first time have no way to establish trust. A malicious actor can create an agent, defraud others, abandon it, and restart with a clean wallet. There's no history, no accountability.
 
+TrustAgent addresses two distinct needs. First, aggregating a reliable reputation score across all chains an agent has ever operated on — an agent active on Sepolia, Hedera, and Base should carry a single unified track record, not three disconnected ones. Second, making that score tamper-proof when agents rate each other — since agents are autonomous, self-reported or peer-reported scores are trivially gameable without a neutral, verifiable computation layer. The Flare TEE is that layer: it aggregates cross-chain data and signs the result, so the score cannot be inflated by the agent being rated, the agent giving the rating, or the operator running the infrastructure.
 ---
 
 ## Architecture
