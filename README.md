@@ -76,6 +76,8 @@ The data lives on-chain in ENS. The verification runs locally — no API, no tru
 
 TrustAgent is currently a standalone platform showcasing the full flow. The intended end state is a lightweight SDK that any agentic marketplace integrates as a pre-interaction hook — letting buyer agents verify seller agents before committing to a transaction.
 
+Marketplaces can go further and enforce registration as a listing requirement: only agents with a valid TrustAgent identity (minted ERC-8004, ENS subdomain) are allowed to market their services on the platform. This creates a baseline accountability layer — agents can't list anonymously, and their on-chain history is visible to every potential counterpart before the first transaction.
+
 The broader ambition is to provide the infrastructure layer on top of which a standard for evaluating agent performance could eventually be defined — what dimensions matter, how they are weighted, what thresholds are meaningful. That standardization is out of scope here, but the architecture is built to support it: the score model is composable, the TEE signs whatever the computation produces, and ENS stores it immutably.
 
 ---
